@@ -11,57 +11,57 @@ package main
 
 import (
     "log"
-	"os"
+    "os"
     "strings"
 
-	"github.com/joseluisq/goipcc"
+    "github.com/joseluisq/goipcc"
 )
 
 func main() {
-	// Code for example purposes only
+    // Code for example purposes only
 
-	// 1. Create a listening unix socket via the `socat` tool (example purposes only)
-	// On your terminal execute:
-	// 	rm -f /tmp/mysocket && socat UNIX-LISTEN:/tmp/mysocket -
+    // 1. Create a listening unix socket via the `socat` tool (example purposes only)
+    // On your terminal execute:
+    // 	rm -f /tmp/mysocket && socat UNIX-LISTEN:/tmp/mysocket -
 
-	// 2. Then just run the client example in order to exchange data with current socket
-	ipc, err := goipcc.New("/tmp/mysocket")
-	if err != nil {
-		log.Println("unable to communicate with socket:", err)
-		os.Exit(1)
-	}
+    // 2. Then just run the client example in order to exchange data with current socket
+    ipc, err := goipcc.New("/tmp/mysocket")
+    if err != nil {
+        log.Println("unable to communicate with socket:", err)
+        os.Exit(1)
+    }
 
-	// 3. Send many data requests (example purposes only)
-	pangrama := strings.Split("The quick brown fox jumps over the lazy dog", " ")
-	for _, word := range pangrama {
-		_, err := ipc.Write([]byte(word + "\n"))
-		if err != nil {
-			log.Fatalln("unable to write to socket:", err)
-			break
-		}
-		log.Println("client data sent:", word)
-	}
+    // 3. Send many data requests (example purposes only)
+    pangrama := strings.Split("The quick brown fox jumps over the lazy dog", " ")
+    for _, word := range pangrama {
+        _, err := ipc.Write([]byte(word + "\n"))
+        if err != nil {
+            log.Fatalln("unable to write to socket:", err)
+            break
+        }
+        log.Println("client data sent:", word)
+    }
 
-	// 4. Listen for socket data responses
-	ipc.Listen(func(data []byte, err error) {
-		if err != nil {
-			log.Fatalln("unable to get data:", err)
-		}
-		log.Println("client data got:", string(data))
-	})
+    // 4. Listen for socket data responses
+    ipc.Listen(func(data []byte, err error) {
+        if err != nil {
+            log.Fatalln("unable to get data:", err)
+        }
+        log.Println("client data got:", string(data))
+    })
 
-	// 5. Finally after running the client you'll see the output on both sides
-	// with a slight delay on purpose (see `ConnTimeoutMs` prop):
-	//
-	// 	The
-	// 	quick
-	// 	brown
-	// 	fox
-	// 	jumps
-	// 	over
-	// 	the
-	// 	lazy
-	// 	dog
+    // 5. Finally after running the client you'll see the output on both sides
+    // with a slight delay on purpose (see `ConnTimeoutMs` prop):
+    //
+    // 	The
+    // 	quick
+    // 	brown
+    // 	fox
+    // 	jumps
+    // 	over
+    // 	the
+    // 	lazy
+    // 	dog
 }
 ```
 
