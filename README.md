@@ -11,7 +11,6 @@ package main
 
 import (
     "log"
-    "os"
     "strings"
 
     "github.com/joseluisq/goipcc"
@@ -20,24 +19,22 @@ import (
 func main() {
     // Code for example purposes only
 
-    // 1. Create a listening unix socket via the `socat` tool (example purposes only)
+    // 1. Create a listening unix socket via the `socat` tool
     // On your terminal execute:
     // 	rm -f /tmp/mysocket && socat UNIX-LISTEN:/tmp/mysocket -
 
     // 2. Then just run the client example in order to exchange data with current socket
     ipc, err := goipcc.New("/tmp/mysocket")
     if err != nil {
-        log.Println("unable to communicate with socket:", err)
-        os.Exit(1)
+        log.Fatalln("unable to communicate with socket:", err)
     }
 
-    // 3. Send many data requests (example purposes only)
-    pangrama := strings.Split("The quick brown fox jumps over the lazy dog", " ")
-    for _, word := range pangrama {
+    // 3. Send some sequential data to current socket
+    pangram := strings.Split("The quick brown fox jumps over the lazy dog", " ")
+    for _, word := range pangram {
         _, err := ipc.Write([]byte(word + "\n"))
         if err != nil {
             log.Fatalln("unable to write to socket:", err)
-            break
         }
         log.Println("client data sent:", word)
     }
@@ -51,7 +48,7 @@ func main() {
     })
 
     // 5. Finally after running the client you'll see the output on both sides
-    // with a slight delay on purpose (see `ConnTimeoutMs` prop):
+    // with a slight delay on purpose (see `WriteDelayMs` prop):
     //
     // 	The
     // 	quick

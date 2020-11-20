@@ -55,7 +55,7 @@ func TestNew(t *testing.T) {
 func TestIPCSockClient_Write(t *testing.T) {
 	type fields struct {
 		UnixSocketFilePath string
-		ConnTimeoutMs      time.Duration
+		WriteDelayMs       time.Duration
 		conn               net.Conn
 		chanResult         chan ipcSockResult
 	}
@@ -75,9 +75,9 @@ func TestIPCSockClient_Write(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &IPCSockClient{
 				UnixSocketFilePath: tt.fields.UnixSocketFilePath,
-				ConnTimeoutMs:      tt.fields.ConnTimeoutMs,
-				conn:               tt.fields.conn,
-				chanResult:         tt.fields.chanResult,
+				WriteDelayMs:       tt.fields.WriteDelayMs,
+				zConn:              tt.fields.conn,
+				zChanResult:        tt.fields.chanResult,
 			}
 			gotN, err := c.Write(tt.args.data)
 			if (err != nil) != tt.wantErr {
@@ -94,7 +94,7 @@ func TestIPCSockClient_Write(t *testing.T) {
 func TestIPCSockClient_Listen(t *testing.T) {
 	type fields struct {
 		UnixSocketFilePath string
-		ConnTimeoutMs      time.Duration
+		WriteDelayMs       time.Duration
 		conn               net.Conn
 		chanResult         chan ipcSockResult
 	}
@@ -112,9 +112,9 @@ func TestIPCSockClient_Listen(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &IPCSockClient{
 				UnixSocketFilePath: tt.fields.UnixSocketFilePath,
-				ConnTimeoutMs:      tt.fields.ConnTimeoutMs,
-				conn:               tt.fields.conn,
-				chanResult:         tt.fields.chanResult,
+				WriteDelayMs:       tt.fields.WriteDelayMs,
+				zConn:              tt.fields.conn,
+				zChanResult:        tt.fields.chanResult,
 			}
 			c.Listen(tt.args.handler)
 		})

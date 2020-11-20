@@ -6,22 +6,24 @@ import (
 	"time"
 )
 
-// IPCSockClient defines a IPC socket client
+// IPCSockClient defines a IPC socket client.
 type IPCSockClient struct {
+	// Unix socket file path.
 	UnixSocketFilePath string
-	ConnTimeoutMs      time.Duration
+	// Delay for every socket write in milliseconds (default 500ms).
+	WriteDelayMs time.Duration
 
-	conn       net.Conn
-	chanResult chan ipcSockResult
+	zConn       net.Conn
+	zChanResult chan ipcSockResult
 }
 
-// ipcSockResult defines a IPC socket client result pair
+// ipcSockResult defines a IPC socket client result pair.
 type ipcSockResult struct {
 	data []byte
 	err  error
 }
 
-// socketReader reads socket response data
+// socketReader reads socket response data.
 func socketReader(r io.Reader, chanResult chan<- ipcSockResult) {
 	buf := make([]byte, 1024)
 	for {
@@ -51,27 +53,27 @@ func New(unixSocketFilePath string) (*IPCSockClient, error) {
 	go socketReader(conn, chanResult)
 	return &IPCSockClient{
 		UnixSocketFilePath: unixSocketFilePath,
-		ConnTimeoutMs:      500,
-		conn:               conn,
-		chanResult:         chanResult,
+		WriteDelayMs:       500,
+		zConn:              conn,
+		zChanResult:        chanResult,
 	}, nil
 }
 
 // Write writes bytes to current socket.
 func (c *IPCSockClient) Write(data []byte) (n int, err error) {
-	n, err = c.conn.Write(data)
+	n, err = c.zConn.Write(data)
 	if err != nil {
 		return n, err
 	}
-	time.Sleep(c.ConnTimeoutMs * time.Millisecond)
+	time.Sleep(c.WriteDelayMs * time.Millisecond)
 	return n, nil
 }
 
 // Listen listens for data socket responses.
 func (c *IPCSockClient) Listen(handler func([]byte, error)) {
-	defer c.conn.Close()
+	defer c.zConn.Close()
 	for {
-		r := <-c.chanResult
+		r := <-c.zChanResult
 		handler(r.data, r.err)
 	}
 }
