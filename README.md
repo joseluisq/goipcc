@@ -10,55 +10,63 @@
 package main
 
 import (
-    "log"
-    "strings"
+	"log"
+	"strings"
 
-    "github.com/joseluisq/goipcc"
+	"github.com/joseluisq/goipcc"
 )
 
 func main() {
-    // Code for example purposes only
+	// Code for example purposes only
 
-    // 1. Create a listening unix socket via the `socat` tool
-    // On your terminal execute:
-    // 	rm -f /tmp/mysocket && socat UNIX-LISTEN:/tmp/mysocket -
+    // 1. Create a simple listening Unix socket with echo functionality
+    // using the `socat` tool -> http://www.dest-unreach.org/socat/
+	// Then execute the following commands on your terminal:
+	//  rm -f /tmp/mysocket && socat UNIX-LISTEN:/tmp/mysocket,fork exec:'/bin/cat'
 
-    // 2. Then just run the client example in order to exchange data with current socket
-    ipc, err := goipcc.New("/tmp/mysocket")
-    if err != nil {
-        log.Fatalln("unable to communicate with socket:", err)
-    }
+    // 2. Now just run this client code example in order to exchange data with current socket.
+    //  go run examples/main.go
 
-    // 3. Send some sequential data to current socket
-    pangram := strings.Split("The quick brown fox jumps over the lazy dog", " ")
-    for _, word := range pangram {
-        _, err := ipc.Write([]byte(word + "\n"))
-        if err != nil {
-            log.Fatalln("unable to write to socket:", err)
-        }
-        log.Println("client data sent:", word)
-    }
+    // 2.1 Connect to the listening socket
+	sock, err := goipcc.Connect("/tmp/mysocket")
+	if err != nil {
+		log.Fatalln("unable to communicate with socket:", err)
+	}
 
-    // 4. Listen for socket data responses
-    ipc.Listen(func(data []byte, err error) {
-        if err != nil {
-            log.Fatalln("unable to get data:", err)
-        }
-        log.Println("client data got:", string(data))
-    })
+	// 2.2 Send some sequential data to current socket (example only)
+	pangram := strings.Split("The quick brown fox jumps over the lazy dog", " ")
+	for _, word := range pangram {
+		log.Println("client data sent:", word)
+		_, err := sock.Write([]byte(word), func(resp []byte, err error) {
+			log.Println("client data received:", string(resp))
+		})
+		if err != nil {
+			log.Fatalln("unable to write to socket:", err)
+		}
+	}
 
-    // 5. Finally after running the client you'll see the output on both sides
-    // with a slight delay on purpose (see `WriteDelayMs` prop):
+	sock.Close()
+
+    // 3. Finally after running the client you'll see a similar output like:
     //
-    // 	The
-    // 	quick
-    // 	brown
-    // 	fox
-    // 	jumps
-    // 	over
-    // 	the
-    // 	lazy
-    // 	dog
+    // 2020/11/24 00:39:27 client data sent: The
+    // 2020/11/24 00:39:27 client data received: The
+    // 2020/11/24 00:39:28 client data sent: quick
+    // 2020/11/24 00:39:28 client data received: quick
+    // 2020/11/24 00:39:29 client data sent: brown
+    // 2020/11/24 00:39:29 client data received: brown
+    // 2020/11/24 00:39:30 client data sent: fox
+    // 2020/11/24 00:39:30 client data received: fox
+    // 2020/11/24 00:39:31 client data sent: jumps
+    // 2020/11/24 00:39:31 client data received: jumps
+    // 2020/11/24 00:39:32 client data sent: over
+    // 2020/11/24 00:39:32 client data received: over
+    // 2020/11/24 00:39:33 client data sent: the
+    // 2020/11/24 00:39:33 client data received: the
+    // 2020/11/24 00:39:34 client data sent: lazy
+    // 2020/11/24 00:39:34 client data received: lazy
+    // 2020/11/24 00:39:35 client data sent: dog
+    // 2020/11/24 00:39:35 client data received: dog
 }
 ```
 
