@@ -8,6 +8,10 @@ go:
 env:
   - GO111MODULE=on
 
+addons:
+  apt_packages:
+    - socat
+
 notifications:
   email: false
 
