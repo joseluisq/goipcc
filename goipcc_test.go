@@ -11,7 +11,55 @@ import (
 	"time"
 )
 
+// unixSocketPath is a default Unix socket path used on tests.
+const unixSocketPath = "/tmp/mysocket"
+
+// unixSocketDelay defines milliseconds pause in order to wait until
+// the listening server (`socat`) is ready to accept connections.
+const unixSocketDelay = 150
+
+// listeningSocket defines a listening unix socket.
+type listeningSocket struct {
+	cmd *exec.Cmd
+	wg  *sync.WaitGroup
+}
+
+// createListeningSocket creates a new listening unix socket using `socat` tool.
+func createListeningSocket() (*listeningSocket, error) {
+	exec.Command("rm", "-rf", unixSocketPath).Run()
+
+	var out bytes.Buffer
+	cmd := exec.Command("socat", "UNIX-LISTEN:"+unixSocketPath+",fork", "exec:'/bin/cat'")
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = &out
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go cmd.Wait()
+	time.Sleep(unixSocketDelay * time.Millisecond)
+
+	return &listeningSocket{
+		wg:  &wg,
+		cmd: cmd,
+	}, nil
+}
+
+// close method closes current socket connection signaling it to finish.
+func (s *listeningSocket) close() error {
+	return s.cmd.Process.Signal(os.Interrupt)
+}
+
 func Test_socketReader(t *testing.T) {
+	lsock, err := createListeningSocket()
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+
 	type args struct {
 		data []byte
 	}
@@ -32,27 +80,6 @@ func Test_socketReader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// 1. Remove socket file
-			exec.Command("rm", "-rf", tt.unixSocketPath).Run()
-
-			// 2. Create a socket listening unix socket via the `socat` tool
-			var out bytes.Buffer
-			cmd := exec.Command("socat", "UNIX-LISTEN:"+tt.unixSocketPath+",fork", "exec:'/bin/cat'")
-			cmd.Stderr = os.Stderr
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = &out
-
-			var wg sync.WaitGroup
-
-			if err := cmd.Start(); err != nil {
-				t.Errorf("%v", err)
-			}
-
-			wg.Add(1)
-			go cmd.Wait()
-
-			time.Sleep(300 * time.Millisecond)
-
 			// 3. Create a socket client
 			conn, err := net.Dial("unix", tt.unixSocketPath)
 			if err != nil {
@@ -81,23 +108,23 @@ func Test_socketReader(t *testing.T) {
 				if !reflect.DeepEqual(r.data, tt.want) {
 					t.Errorf("%v", err)
 				}
-				wg.Done()
+				lsock.wg.Done()
 			}
 
-			wg.Wait()
-
-			// 6. Send signal to `socat` listening process
-			if err := cmd.Process.Signal(os.Interrupt); err != nil {
-				t.Errorf("%v", err)
-				return
-			}
+			lsock.wg.Wait()
 		})
+	}
+
+	// 6. Send signal to `socat` listening process
+	if err := lsock.close(); err != nil {
+		t.Errorf("%v", err)
+		return
 	}
 }
 
 func TestNew(t *testing.T) {
 	type args struct {
-		unixSocketFilePath string
+		unixSocketPath string
 	}
 	tests := []struct {
 		name string
@@ -107,7 +134,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "valid unix socket client instance",
 			args: args{
-				unixSocketFilePath: "/tmp/mysocket",
+				unixSocketPath: "/tmp/mysocket",
 			},
 			want: &IPCSockClient{
 				zSocketFilePath: "/tmp/mysocket",
@@ -116,7 +143,7 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := New(tt.args.unixSocketFilePath); !reflect.DeepEqual(got, tt.want) {
+			if got := New(tt.args.unixSocketPath); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("New() = %v, want %v", got, tt.want)
 			}
 		})
@@ -124,44 +151,30 @@ func TestNew(t *testing.T) {
 }
 
 func TestIPCSockClient_Connect(t *testing.T) {
-	const unixSocketFilePath = "/tmp/mysocket"
-
-	// 1. Remove socket file
-	exec.Command("rm", "-rf", unixSocketFilePath).Run()
-
-	// 2. Create a socket listening unix socket via the `socat` tool
-	var out bytes.Buffer
-	cmd := exec.Command("socat", "UNIX-LISTEN:"+unixSocketFilePath+",fork", "exec:'/bin/cat'")
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = &out
-
-	if err := cmd.Start(); err != nil {
+	lsock, err := createListeningSocket()
+	if err != nil {
 		t.Errorf("%v", err)
+		return
 	}
-	go cmd.Wait()
-	time.Sleep(300 * time.Millisecond)
 
 	tests := []struct {
-		name               string
-		unixSocketFilePath string
-		closeSocket        bool
-		wantErr            bool
+		name           string
+		unixSocketPath string
+		wantErr        bool
 	}{
 		{
-			name:               "invalid unix socket connection",
-			unixSocketFilePath: unixSocketFilePath + "xyz",
-			wantErr:            true,
+			name:           "invalid unix socket connection",
+			unixSocketPath: unixSocketPath + "xyz",
+			wantErr:        true,
 		},
 		{
-			name:               "valid unix socket connection",
-			unixSocketFilePath: unixSocketFilePath,
-			closeSocket:        true,
+			name:           "valid unix socket connection",
+			unixSocketPath: unixSocketPath,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := New(tt.unixSocketFilePath)
+			c := New(tt.unixSocketPath)
 			if err := c.Connect(); (err != nil) != tt.wantErr {
 				t.Errorf("IPCSockClient.Connect() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -174,13 +187,84 @@ func TestIPCSockClient_Connect(t *testing.T) {
 					t.Errorf("Connect() = zSockResp: %v, want not nil", c.zSockResp)
 				}
 			}
+		})
+	}
 
-			if tt.closeSocket {
-				if err := cmd.Process.Signal(os.Interrupt); err != nil {
-					t.Errorf("%v", err)
-					return
+	if err := lsock.close(); err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+}
+
+func TestIPCSockClient_Write(t *testing.T) {
+	lsock, err := createListeningSocket()
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+
+	type args struct {
+		data        []byte
+		respHandler func(data []byte, err error)
+	}
+	tests := []struct {
+		name           string
+		unixSocketPath string
+		args           args
+		socketNil      bool
+		wantN          int
+		wantErr        bool
+	}{
+		{
+			name:           "valid unix socket write without handler",
+			unixSocketPath: unixSocketPath,
+			args: args{
+				data:        []byte(nil),
+				respHandler: nil,
+			},
+			wantN: 0,
+		},
+		{
+			name:           "valid unix socket write with handler",
+			unixSocketPath: unixSocketPath,
+			args: args{
+				data:        []byte("ñ"),
+				respHandler: func(data []byte, err error) {},
+			},
+			wantN: 2,
+		},
+		{
+			name:           "nil socket connection reference",
+			unixSocketPath: unixSocketPath,
+			socketNil:      true,
+			args: args{
+				data: []byte(nil),
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := New(tt.unixSocketPath)
+			// Check nil socket references on demand
+			if !tt.socketNil {
+				if err := c.Connect(); (err != nil) != tt.wantErr {
+					t.Errorf("IPCSockClient.Connect() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}
+			gotN, err := c.Write(tt.args.data, tt.args.respHandler)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IPCSockClient.Write() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if gotN != tt.wantN {
+				t.Errorf("IPCSockClient.Write() = %v, want %v", gotN, tt.wantN)
+			}
 		})
+	}
+
+	if err := lsock.close(); err != nil {
+		t.Errorf("%v", err)
+		return
 	}
 }
