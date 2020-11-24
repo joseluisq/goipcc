@@ -268,3 +268,34 @@ func TestIPCSockClient_Write(t *testing.T) {
 		return
 	}
 }
+
+func TestIPCSockClient_Close(t *testing.T) {
+	lsock, err := createListeningSocket()
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+
+	tests := []struct {
+		name    string
+		wantErr bool
+	}{
+		{
+			name: "close current socket connection",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := New(unixSocketPath)
+			if err := c.Connect(); (err != nil) != tt.wantErr {
+				t.Errorf("IPCSockClient.Connect() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			c.Close()
+		})
+	}
+
+	if err := lsock.close(); err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+}
