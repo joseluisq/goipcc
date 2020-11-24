@@ -28,7 +28,8 @@ func main() {
     //  go run examples/main.go
 
     // 2.1 Connect to the listening socket
-    sock, err := goipcc.Connect("/tmp/mysocket")
+    sock := goipcc.New("/tmp/mysocket")
+    err := sock.Connect()
     if err != nil {
         log.Fatalln("unable to communicate with socket:", err)
     }

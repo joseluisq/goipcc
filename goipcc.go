@@ -38,19 +38,24 @@ func socketReader(r io.Reader, sockResp chan<- ipcSockResp) {
 	}
 }
 
-// Connect establishes a new Unix IPC socket connection and returns the current client instance.
-func Connect(unixSocketFilePath string) (*IPCSockClient, error) {
-	conn, err := net.Dial("unix", unixSocketFilePath)
+// New creates a new Unix IPC socket client instance.
+func New(unixSocketFilePath string) *IPCSockClient {
+	return &IPCSockClient{
+		zSocketFilePath: unixSocketFilePath,
+	}
+}
+
+// Connect establishes a new Unix IPC socket connection.
+func (c *IPCSockClient) Connect() error {
+	conn, err := net.Dial("unix", c.zSocketFilePath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	sockResp := make(chan ipcSockResp)
 	go socketReader(conn, sockResp)
-	return &IPCSockClient{
-		zSocketFilePath: unixSocketFilePath,
-		zSock:           conn,
-		zSockResp:       sockResp,
-	}, nil
+	c.zSock = conn
+	c.zSockResp = sockResp
+	return nil
 }
 
 // Write writes bytes to current socket and provides an optional response handler.
