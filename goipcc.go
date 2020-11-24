@@ -1,19 +1,20 @@
 package goipcc
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"sync"
 )
 
-// IPCSockClient defines a Unix IPC socket client.
+// IPCSockClient defines an Unix IPC socket client.
 type IPCSockClient struct {
 	zSocketFilePath string
 	zSock           net.Conn
 	zSockResp       chan ipcSockResp
 }
 
-// ipcSockResp defines a Unix IPC socket client response pair.
+// ipcSockResp defines an Unix IPC socket client response pair.
 type ipcSockResp struct {
 	data []byte
 	err  error
@@ -58,8 +59,11 @@ func (c *IPCSockClient) Connect() error {
 	return nil
 }
 
-// Write writes bytes to current socket and provides an optional response handler.
+// Write writes bytes to current socket. It also provides an optional data response handler.
 func (c *IPCSockClient) Write(data []byte, respHandler func(data []byte, err error)) (n int, err error) {
+	if c.zSock == nil {
+		return 0, fmt.Errorf("no available unix socket connection to write")
+	}
 	n, err = c.zSock.Write(data)
 	if err == nil && respHandler != nil {
 		var res ipcSockResp
@@ -77,5 +81,7 @@ func (c *IPCSockClient) Write(data []byte, respHandler func(data []byte, err err
 
 // Close closes current socket client connection.
 func (c *IPCSockClient) Close() {
-	c.zSock.Close()
+	if c.zSock != nil {
+		c.zSock.Close()
+	}
 }
