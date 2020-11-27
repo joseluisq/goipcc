@@ -16,7 +16,7 @@ const unixSocketPath = "/tmp/mysocket"
 
 // unixSocketDelay defines milliseconds pause in order to wait until
 // the listening server (`socat`) is ready to accept connections.
-const unixSocketDelay = 150
+const unixSocketDelay = 500
 
 // listeningSocket defines a listening unix socket.
 type listeningSocket struct {
