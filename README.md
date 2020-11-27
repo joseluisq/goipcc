@@ -1,4 +1,4 @@
-# goipcc [![Build Status](https://travis-ci.com/joseluisq/goipcc.svg?branch=master)](https://travis-ci.com/joseluisq/goipcc) [![codecov](https://codecov.io/gh/joseluisq/goipcc/branch/master/graph/badge.svg)](https://codecov.io/gh/joseluisq/goipcc) [![Go Report Card](https://goreportcard.com/badge/github.com/joseluisq/goipcc)](https://goreportcard.com/report/github.com/joseluisq/goipcc) [![GoDoc](https://godoc.org/github.com/joseluisq/goipcc?status.svg)](https://pkg.go.dev/github.com/joseluisq/goipcc)
+# goipcc [![Build Status](https://travis-ci.com/joseluisq/goipcc.svg?branch=master)](https://travis-ci.com/joseluisq/goipcc) [![codecov](https://codecov.io/gh/joseluisq/goipcc/branch/master/graph/badge.svg)](https://codecov.io/gh/joseluisq/goipcc) [![Go Report Card](https://goreportcard.com/badge/github.com/joseluisq/goipcc)](https://goreportcard.com/report/github.com/joseluisq/goipcc) [![PkgGoDev](https://pkg.go.dev/badge/github.com/joseluisq/goipcc)](https://pkg.go.dev/github.com/joseluisq/goipcc)
 
 > A simple [Unix IPC Socket](https://en.wikipedia.org/wiki/Unix_domain_socket) client for [Go](https://golang.org/pkg/net/).
 
