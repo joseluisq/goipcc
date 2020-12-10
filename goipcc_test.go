@@ -137,7 +137,7 @@ func TestNew(t *testing.T) {
 				unixSocketPath: "/tmp/mysocket",
 			},
 			want: &IPCSockClient{
-				zSocketFilePath: "/tmp/mysocket",
+				socketFilePath: "/tmp/mysocket",
 			},
 		},
 	}
@@ -180,11 +180,11 @@ func TestIPCSockClient_Connect(t *testing.T) {
 			}
 
 			if !tt.wantErr {
-				if c.zSock == nil {
-					t.Errorf("Connect() = zSock: %v, want not nil", c.zSock)
+				if c.sock == nil {
+					t.Errorf("Connect() = zSock: %v, want not nil", c.sock)
 				}
-				if c.zSockResp == nil {
-					t.Errorf("Connect() = zSockResp: %v, want not nil", c.zSockResp)
+				if c.sockResp == nil {
+					t.Errorf("Connect() = zSockResp: %v, want not nil", c.sockResp)
 				}
 			}
 		})
@@ -205,7 +205,7 @@ func TestIPCSockClient_Write(t *testing.T) {
 
 	type args struct {
 		data        []byte
-		respHandler func(data []byte, err error)
+		respHandler func(data []byte, err error, done func())
 	}
 	tests := []struct {
 		name           string
@@ -229,7 +229,7 @@ func TestIPCSockClient_Write(t *testing.T) {
 			unixSocketPath: unixSocketPath,
 			args: args{
 				data:        []byte("ñ"),
-				respHandler: func(data []byte, err error) {},
+				respHandler: func(data []byte, err error, done func()) { done() },
 			},
 			wantN: 2,
 		},

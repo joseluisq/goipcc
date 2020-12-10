@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sync"
 )
 
 // IPCSockClient defines an Unix IPC socket client.
 type IPCSockClient struct {
-	zSocketFilePath string
-	zSock           net.Conn
-	zSockResp       chan ipcSockResp
+	socketFilePath string
+	sock           net.Conn
+	sockResp       chan ipcSockResp
 }
 
 // ipcSockResp defines an Unix IPC socket client response pair.
@@ -42,46 +41,52 @@ func socketReader(r io.Reader, sockResp chan<- ipcSockResp) {
 // New creates a new Unix IPC socket client instance.
 func New(unixSocketFilePath string) *IPCSockClient {
 	return &IPCSockClient{
-		zSocketFilePath: unixSocketFilePath,
+		socketFilePath: unixSocketFilePath,
 	}
 }
 
 // Connect establishes a new Unix IPC socket connection.
 func (c *IPCSockClient) Connect() error {
-	conn, err := net.Dial("unix", c.zSocketFilePath)
+	conn, err := net.Dial("unix", c.socketFilePath)
 	if err != nil {
 		return err
 	}
 	sockResp := make(chan ipcSockResp)
 	go socketReader(conn, sockResp)
-	c.zSock = conn
-	c.zSockResp = sockResp
+	c.sock = conn
+	c.sockResp = sockResp
 	return nil
 }
 
 // Write writes bytes to current socket. It also provides an optional data response handler.
-func (c *IPCSockClient) Write(data []byte, respHandler func(data []byte, err error)) (n int, err error) {
-	if c.zSock == nil {
+// When a `respHandler` function is provided then three params are provided: `data []byte`, `err error`, `done func()`.
+// The `done()` function param acts as a callback completion in order to finish the current write execution.
+func (c *IPCSockClient) Write(data []byte, respHandler func(data []byte, err error, done func())) (n int, err error) {
+	if c.sock == nil {
 		return 0, fmt.Errorf("no available unix socket connection to write")
 	}
-	n, err = c.zSock.Write(data)
+	n, err = c.sock.Write(data)
 	if err == nil && respHandler != nil {
 		var res ipcSockResp
-		wg := new(sync.WaitGroup)
-		wg.Add(1)
-		select {
-		case res = <-c.zSockResp:
-			respHandler(res.data, res.err)
-			wg.Done()
+		quitCh := make(chan struct{})
+	loop:
+		for {
+			select {
+			case <-quitCh:
+				break loop
+			case res = <-c.sockResp:
+				respHandler(res.data, res.err, func() {
+					close(quitCh)
+				})
+			}
 		}
-		wg.Wait()
 	}
 	return n, err
 }
 
 // Close closes current socket client connection.
 func (c *IPCSockClient) Close() {
-	if c.zSock != nil {
-		c.zSock.Close()
+	if c.sock != nil {
+		c.sock.Close()
 	}
 }
