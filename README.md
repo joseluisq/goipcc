@@ -36,8 +36,10 @@ func main() {
     pangram := strings.Split("The quick brown fox jumps over the lazy dog", " ")
     for _, word := range pangram {
         log.Println("client data sent:", word)
-        _, err := sock.Write([]byte(word), func(resp []byte, err error) {
+        _, err := sock.Write([]byte(word), func(resp []byte, err error, done func()) {
             log.Println("client data received:", string(resp))
+            // Finish the current write handling response if we are done
+            done()
         })
         if err != nil {
             log.Fatalln("unable to write to socket:", err)
