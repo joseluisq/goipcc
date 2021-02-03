@@ -2,6 +2,8 @@
 
 > A simple [Unix IPC Socket](https://en.wikipedia.org/wiki/Unix_domain_socket) client for [Go](https://golang.org/pkg/net/).
 
+__NOTE:__ For more flexibility try [joseluisq/gonetc](https://github.com/joseluisq/gonetc) instead.
+
 ## Usage
 
 ```go
